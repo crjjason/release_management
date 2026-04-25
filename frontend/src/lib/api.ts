@@ -1,4 +1,4 @@
-import { Component, Environment, Release, ReleaseArtifact, ReleaseStatus } from './types';
+import { Component, Deployment, Environment, Release, ReleaseArtifact, ReleaseStatus } from './types';
 
 const API_BASE = 'http://localhost:8080/api';
 
@@ -60,5 +60,12 @@ export const api = {
     fetchJson<Release>(`${API_BASE}/releases/${id}/artifacts`, {
       method: 'PUT',
       body: JSON.stringify({ artifacts: releaseArtifacts }),
+    }),
+  getEnvironmentDeployments: (envId: number) =>
+    fetchJson<Deployment[]>(`${API_BASE}/environments/${envId}/deployments`),
+  deployRelease: (releaseId: number, environmentId: number) =>
+    fetchJson<Deployment[]>(`${API_BASE}/deployments`, {
+      method: 'POST',
+      body: JSON.stringify({ releaseId, environmentId }),
     }),
 };

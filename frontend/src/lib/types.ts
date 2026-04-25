@@ -29,6 +29,15 @@ export interface ReleaseArtifact {
   owner: string;
 }
 
+export interface Deployment {
+  componentId: number;
+  componentName: string;
+  version: string;
+  releaseId?: number;
+  releaseName?: string;
+  deployedAt: string;
+}
+
 export interface Release {
   id: number;
   name: string;

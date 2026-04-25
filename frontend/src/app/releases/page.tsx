@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Release, ReleaseStatus, Environment, Component, ReleaseArtifact } from '@/lib/types';
+import { Release, ReleaseStatus, Environment, Component, ReleaseArtifact, Deployment } from '@/lib/types';
 import { api } from '@/lib/api';
 import StatusBadge from '@/components/StatusBadge';
 import CreateReleaseDialog from '@/components/CreateReleaseDialog';
 import AssignDialog from '@/components/AssignDialog';
 import EditArtifactsDialog from '@/components/EditArtifactsDialog';
+import DeployDialog from '@/components/DeployDialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -45,6 +46,10 @@ export default function ReleasesPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [editArtifactsOpen, setEditArtifactsOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [deployEnv, setDeployEnv] = useState<Environment | null>(null);
+  const [deployOpen, setDeployOpen] = useState(false);
+  const [sitDeployments, setSitDeployments] = useState<Deployment[]>([]);
+  const [uatDeployments, setUatDeployments] = useState<Deployment[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -67,6 +72,31 @@ export default function ReleasesPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const fetchDeploymentsForRelease = useCallback(async (release: Release) => {
+    if (release.sitEnvironment) {
+      try {
+        const data = await api.getEnvironmentDeployments(release.sitEnvironment.id);
+        setSitDeployments(data);
+      } catch (e) {
+        console.error(e);
+        setSitDeployments([]);
+      }
+    } else {
+      setSitDeployments([]);
+    }
+    if (release.uatEnvironment) {
+      try {
+        const data = await api.getEnvironmentDeployments(release.uatEnvironment.id);
+        setUatDeployments(data);
+      } catch (e) {
+        console.error(e);
+        setUatDeployments([]);
+      }
+    } else {
+      setUatDeployments([]);
+    }
+  }, []);
 
   const handleStatusChange = async (release: Release, nextStatus: ReleaseStatus) => {
     if (nextStatus === ReleaseStatus.IN_PROGRESS) {
@@ -115,6 +145,12 @@ export default function ReleasesPage() {
   const openDetail = (release: Release) => {
     setSelectedRelease(release);
     setDetailOpen(true);
+    fetchDeploymentsForRelease(release);
+  };
+
+  const openDeploy = (env: Environment) => {
+    setDeployEnv(env);
+    setDeployOpen(true);
   };
 
   const grouped = columns.reduce(
@@ -135,6 +171,50 @@ export default function ReleasesPage() {
 
   const canEditArtifacts = (status: ReleaseStatus) =>
     status === ReleaseStatus.NEW || status === ReleaseStatus.PLANNED || status === ReleaseStatus.IN_PROGRESS;
+
+  const getDeploymentVersion = (deployments: Deployment[], componentId: number) => {
+    return deployments.find((d) => d.componentId === componentId)?.version;
+  };
+
+  const renderDiffSection = (label: string, env: Environment | undefined, deployments: Deployment[], release: Release | null) => {
+    if (!env || !release) return null;
+    return (
+      <div className="space-y-2">
+        <h4 className="text-sm font-semibold text-brand-navy">{label}: {env.name}</h4>
+        {release.artifacts.length === 0 ? (
+          <p className="text-sm text-brand-gray">No requested artifacts</p>
+        ) : (
+          <ul className="space-y-1">
+            {release.artifacts.map((a) => {
+              const deployedVersion = getDeploymentVersion(deployments, a.componentId);
+              const match = deployedVersion === a.version;
+              return (
+                <li
+                  key={a.id}
+                  className={`flex items-center justify-between rounded px-3 py-2 text-sm ${
+                    match ? 'bg-green-50' : 'bg-yellow-50'
+                  }`}
+                >
+                  <span className="font-medium text-brand-navy">{a.componentName}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-brand-gray">
+                      Requested: <span className="font-medium text-brand-blue">{a.version}</span>
+                    </span>
+                    <span className="text-brand-gray">
+                      Deployed:{' '}
+                      <span className={`font-medium ${match ? 'text-green-700' : 'text-brand-yellow'}`}>
+                        {deployedVersion ?? 'Not deployed'}
+                      </span>
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -225,6 +305,22 @@ export default function ReleasesPage() {
         onSave={handleSaveArtifacts}
       />
 
+      <DeployDialog
+        open={deployOpen}
+        onClose={() => {
+          setDeployOpen(false);
+          setDeployEnv(null);
+        }}
+        release={selectedRelease}
+        environment={deployEnv}
+        onDeployed={() => {
+          fetchData();
+          if (selectedRelease) {
+            fetchDeploymentsForRelease(selectedRelease);
+          }
+        }}
+      />
+
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -254,9 +350,12 @@ export default function ReleasesPage() {
                   </span>
                 </div>
               )}
+
               {selectedRelease.artifacts.length > 0 && (
-                <div>
-                  <span className="text-sm text-brand-gray">Artifacts:</span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-brand-navy">Requested Artifacts:</span>
+                  </div>
                   <ul className="mt-1 space-y-1">
                     {selectedRelease.artifacts.map((a) => (
                       <li key={a.id} className="text-sm text-brand-navy">
@@ -266,6 +365,36 @@ export default function ReleasesPage() {
                   </ul>
                 </div>
               )}
+
+              {(selectedRelease.sitEnvironment || selectedRelease.uatEnvironment) && selectedRelease.artifacts.length > 0 && (
+                <div className="space-y-3 border-t border-gray-200 pt-3">
+                  <h3 className="text-sm font-semibold text-brand-navy">Deployment Status</h3>
+                  {renderDiffSection('SIT', selectedRelease.sitEnvironment, sitDeployments, selectedRelease)}
+                  {renderDiffSection('UAT', selectedRelease.uatEnvironment, uatDeployments, selectedRelease)}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                {selectedRelease.sitEnvironment && selectedRelease.artifacts.length > 0 && (
+                  <Button
+                    size="sm"
+                    className="bg-brand-blue hover:bg-brand-blue/90"
+                    onClick={() => openDeploy(selectedRelease.sitEnvironment!)}
+                  >
+                    Deploy to SIT
+                  </Button>
+                )}
+                {selectedRelease.uatEnvironment && selectedRelease.artifacts.length > 0 && (
+                  <Button
+                    size="sm"
+                    className="bg-brand-purple hover:bg-brand-purple/90"
+                    onClick={() => openDeploy(selectedRelease.uatEnvironment!)}
+                  >
+                    Deploy to UAT
+                  </Button>
+                )}
+              </div>
+
               {canEditArtifacts(selectedRelease.status) && (
                 <div className="pt-2">
                   <Button

@@ -2,7 +2,9 @@
 
 ## Business Requirements Management
 - New feature would be put inside @features/workspace folder.
-- During the summary phase, business requirement and implementation status should be archived to @features/archive folder and clean up workspace for new feature.
+- During clarifying questions phase, summarize the requirements after clarification @features/workspace/requirements.md
+- During architecture design phase, document the design consideration process and the final decision @features/workspace/design.md
+- During the summary phase, all the files(including the orignal requirement, design.md, clarification.md) @features/workspace/ should be archived to @features/archive folder in a file <feature-name>.md and clean up workspace for new feature.
 
 ## Technical Details
 

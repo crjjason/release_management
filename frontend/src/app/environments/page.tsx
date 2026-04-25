@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Environment, Release } from '@/lib/types';
+import { Environment, Release, Deployment } from '@/lib/types';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
@@ -16,6 +16,7 @@ import {
 export default function EnvironmentsPage() {
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
+  const [deployments, setDeployments] = useState<Record<number, Deployment[]>>({});
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -28,6 +29,21 @@ export default function EnvironmentsPage() {
       ]);
       setEnvironments(envData);
       setReleases(relData);
+
+      // Fetch deployments for each environment
+      const deploymentMap: Record<number, Deployment[]> = {};
+      await Promise.all(
+        envData.map(async (env) => {
+          try {
+            const deps = await api.getEnvironmentDeployments(env.id);
+            deploymentMap[env.id] = deps;
+          } catch (e) {
+            console.error(e);
+            deploymentMap[env.id] = [];
+          }
+        })
+      );
+      setDeployments(deploymentMap);
     } catch (e) {
       console.error(e);
     } finally {
@@ -79,6 +95,7 @@ export default function EnvironmentsPage() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {environments.map((env) => {
             const envReleases = getReleasesForEnv(env.id);
+            const envDeployments = deployments[env.id] ?? [];
             const isDisabled = !env.active;
             return (
               <Card
@@ -113,10 +130,33 @@ export default function EnvironmentsPage() {
                       {isDisabled ? 'Enable' : 'Disable'}
                     </Button>
                   </div>
+
+                  {envDeployments.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-gray">
+                        Deployed Components
+                      </h4>
+                      <div className="space-y-1">
+                        {envDeployments.map((d) => (
+                          <div
+                            key={d.componentId}
+                            className="flex items-center justify-between rounded bg-gray-50 px-2 py-1.5 text-sm"
+                          >
+                            <span className="font-medium text-brand-navy">{d.componentName}</span>
+                            <span className="text-brand-blue">v{d.version}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {envReleases.length === 0 ? (
                     <p className="text-sm text-brand-gray">No active releases</p>
                   ) : (
                     <div className="space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-brand-gray">
+                        Linked Releases
+                      </h4>
                       {envReleases.map((r) => (
                         <div
                           key={r.id}
