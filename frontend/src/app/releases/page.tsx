@@ -322,7 +322,7 @@ export default function ReleasesPage() {
       />
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle className="text-brand-navy">
               {selectedRelease?.name}
