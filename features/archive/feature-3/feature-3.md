@@ -1,0 +1,1 @@
+The current popup to display the information about release details are too small. Enlarge the pop up to display the informaiton.

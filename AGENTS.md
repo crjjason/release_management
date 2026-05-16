@@ -4,7 +4,7 @@
 - New feature would be put inside @features/workspace folder.
 - During clarifying questions phase, summarize the requirements after clarification @features/workspace/requirements.md
 - During architecture design phase, document the design consideration process and the final decision @features/workspace/design.md
-- During the summary phase, all the files(including the orignal requirement, design.md, clarification.md) @features/workspace/ should be archived to @features/archive folder in a file <feature-name>.md and clean up workspace for new feature.
+- During the summary phase, all the files(including the orignal requirement, design.md, clarification.md, tasks.md) @features/workspace/ should be archived to @features/archive folder in the @features/archive/<feature-name>, copy the requirement, design.md, tasks.md, clarification.md into the <feature-name> folder and clean up workspace for new feature.
 
 ## Technical Details
 
@@ -26,11 +26,11 @@
 - Gray Text: `#888888` - supporting text, labels
 
 ## Strategy
-
-1. Read the requirements from @features/workspace folder, turn it into design tasks and implemenation plan with success criteria for each phase to be checked off. 
-2. Execute the plan ensuring all critiera are met
-3. Carry out extensive integration testing with Playwright or similar, fixing defects
-4. Only complete when the MVP is finished and tested, with the server running and ready for the user
+1. Launch the agent teams according to the structure of feature-dev plugin
+2. Read the requirements from @features/workspace folder, turn it into design tasks and implemenation plan with success criteria for each phase to be checked off. 
+3. Execute the plan ensuring all critiera are met
+4. Carry out extensive integration testing with Playwright or similar, fixing defects
+5. Only complete when the MVP is finished and tested, with the server running and ready for the user. 
 
 ## Coding standards
 
